@@ -1,0 +1,9 @@
+.venv/
+.vscode/
+faces/
+pictures/
+secret/
+classify_images.py
+
+
+__pycache__/

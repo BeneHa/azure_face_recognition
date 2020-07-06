@@ -18,154 +18,16 @@ import shutil
 from typing import List, Optional, Tuple
 from azure.cognitiveservices.vision.face.models import Person
 
-from lib.image_operations import resize_image
+from lib.image_operations import resize_image, cleanup_images
+from lib.person_group_operations import train_person_group, add_images_to_person_group
+from lib.face_operations import extract_faces_from_image, resolve_face_ids, getRectangle
 
-
-def add_images_to_person_group(input_path: str, resize_path: str, person_group_id: str) -> None:
-    """Go through a folder where training images for different persons are located.
-    Resize the images and add them to a person group in Azure.
-
-    Structure for input path:
-    input_path
-    - name person 1
-    - name person 2
-        - image 1
-        - image 2
-
-    Args:
-        input_path (str): Path where the input images are located, structure above
-        resize_path (str): [description]
-        person_group_id (str): [description]
-    """
-    #Send images of each person to the service
-    for person_name in os.listdir(input_path):
-        print(f"\nProcessing images for {person_name}\n")
-        current_person_group = face_client.person_group_person.create(PERSON_GROUP_ID, person_name)
-        current_path = input_path + person_name
-        images_current_person = [current_path + "/" + f for f in os.listdir(current_path)]
-        time.sleep(3)
-
-        #Create the folder to put the resized images if it does not exist
-        resized_path = resize_path + person_name
-        if not os.path.exists(resized_path):
-            os.mkdir(resized_path)
-
-        #Go through images for a person, resize them and send to API
-        for image in images_current_person:
-            image_name = os.path.basename(image)
-            target_path = resized_path + "/" + image_name
-            
-            resize_image(image, target_path, (2000,2000))
-
-            with open(target_path, "r+b") as im:
-                try:
-                    face_client.person_group_person.add_face_from_stream(PERSON_GROUP_ID, current_person_group.person_id, im)
-                except azure_face_models.APIErrorException as e:
-                    print("API error for person " + person_name + " for image " + image_name)
-                    print(e)
-            time.sleep(3)
-
-
-def train_person_group(person_group_id: str) -> None:
-    """When enough pictures are sent to Azure for a person group, this methods triggers the training and prints the status
-
-    Args:
-        person_group_id (str): the person group
-    """
-    face_client.person_group.train(PERSON_GROUP_ID)
-
-    # Print information on status
-    while (True):
-        training_status = face_client.person_group.get_training_status(PERSON_GROUP_ID)
-        print("Training status: {}.".format(training_status.status))
-        if (training_status.status is TrainingStatusType.succeeded):
-            break
-        elif (training_status.status is TrainingStatusType.failed):
-            sys.exit('Training the person group has failed.')
-        time.sleep(2)
-
-#Return a list of face IDs for an image
-def extract_faces_from_image(face_client: FaceClient, path: str) -> Tuple:
-    """Takes one image and lets Azure find the faces in the image.
-    No identification is done here, the face IDs are specific to this one image
-
-    Args:
-        face_client (face_client): The client object for the Azure Face API
-        path (str): Path of one image
-
-    Returns:
-        List[str]: List of face IDs. These can then be matched against e.g. a person group
-    """
-    image = open(path, "r+b")
-    face_ids = []
-    faces = face_client.face.detect_with_stream(image)
-    for face in faces:
-        face_ids.append(face.face_id)
-    return face_ids, faces
-
-
-#Resolve a list of face IDs to the actual persons
-def resolve_face_ids(face_client: FaceClient, face_ids: List[str], person_group_id: str) -> Optional[List[Person]]:
-    """For a list of face IDs, let Azure check if there are matches in a person group
-
-    Args:
-        face_client (FaceClient): The azure face client
-        face_ids (List[str]): List of face IDs
-        person_group_id (str): name of the person group
-
-    Returns:
-        Optional[List[Person]]: If there were matches, return a list of Person objects.
-        Will fail if there are no matches or more than 10 faces in the image
-    """
-    try:
-        results = face_client.face.identify(face_ids, PERSON_GROUP_ID)
-        return results
-    except Exception as e:
-        print(f"Error when resolving faces for {image_basename}: {e}")
-        time.sleep(3)
-
-
-def cleanup_images(path_list: List[str]) -> List[str]:
-    """Take a list of paths. Delete all files that are movies
-
-    Args:
-        path_list (List[str]): Full list of paths including movies
-
-    Returns:
-        List[str]: List of paths that are left over
-    """
-    items_no_valid_ending = [f for f in path_list if any(e in f for e in [".mp4", ".MP4", ".mov", ".MOV"])]
-    for file in items_no_valid_ending:
-        os.remove(file)
-    return [f for f in path_list if f not in items_no_valid_ending]
-
-
-# 
-def getRectangle(faceDictionary: dict) -> Tuple:
-    """Convert width height to a point in a rectangle in order to draw a rectangle around a found face
-
-    Args:
-        faceDictionary (dict): [description]
-
-    Returns:
-        Tuple: [description]
-    """
-    rect = faceDictionary.face_rectangle
-    left = rect.left
-    top = rect.top
-    right = left + rect.width
-    bottom = top + rect.height
-    
-    return ((left, top), (right, bottom))
 
 
 #General settings
-#TODO read from file
-KEY = ""
-ENDPOINT = ""
-
+KEY = open(sys.path[0] + "/secret/face_api_key").readline()
+ENDPOINT = open(sys.path[0] + "/secret/face_api_endpoint").readline()
 face_client = FaceClient(ENDPOINT, CognitiveServicesCredentials(KEY))
-
 
 PERSON_GROUP_ID = "bhaeuse_face_group_4"
 

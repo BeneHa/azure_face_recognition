@@ -1,7 +1,7 @@
 from PIL import Image
 import os
 
-def resize_image(source_path, target_path, resolution: tuple):
+def resize_image(source_path, target_path, resolution: tuple) -> None:
     """Resize an image and save it to the target path
 
     Args:
@@ -28,3 +28,18 @@ def resize_image(source_path, target_path, resolution: tuple):
 
     image.thumbnail((resolution))
     image.save(target_path)
+
+
+def cleanup_images(path_list: List[str]) -> List[str]:
+    """Take a list of paths. Delete all files that are movies
+
+    Args:
+        path_list (List[str]): Full list of paths including movies
+
+    Returns:
+        List[str]: List of paths that are left over
+    """
+    items_no_valid_ending = [f for f in path_list if any(e in f for e in [".mp4", ".MP4", ".mov", ".MOV"])]
+    for file in items_no_valid_ending:
+        os.remove(file)
+    return [f for f in path_list if f not in items_no_valid_ending]
