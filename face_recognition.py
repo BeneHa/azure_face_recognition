@@ -103,6 +103,7 @@ def prepare_environment() -> FaceClient:
         return FaceClient(ENDPOINT, CognitiveServicesCredentials(KEY))
     except ValueError:
         click.echo("You need to provide an endpoint and API key in the config.yaml.")
+        sys.exit()
     
 
 def run_if_valid_credentials(func, *args):
