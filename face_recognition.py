@@ -1,30 +1,39 @@
 import asyncio
-import io
 import glob
+import io
 import os
+import shutil
 import sys
 import time
-import click
 import uuid
-import requests
-from urllib.parse import urlparse
 from io import BytesIO
-from PIL import Image, ImageDraw, ExifTags
-from azure.cognitiveservices.vision.face import FaceClient
-from msrest.authentication import CognitiveServicesCredentials
-from azure.cognitiveservices.vision.face.models import TrainingStatusType, Person, SnapshotObjectType, OperationStatusType
-import azure.cognitiveservices.vision.face.models as azure_face_models
-import shutil
-import yaml
-from typing import List, Optional, Tuple, Dict
-from azure.cognitiveservices.vision.face.models import Person
-from azure.cognitiveservices.vision.face.models._models_py3 import APIErrorException
-from msrest.exceptions import ValidationError
+from typing import Dict, List, Optional, Tuple
+from urllib.parse import urlparse
 
-from lib.image_operations import resize_image, cleanup_images
-from lib.person_group_operations import train_person_group, add_images_to_person_group
-from lib.face_operations import extract_faces_from_image, resolve_face_ids, getRectangle
-from lib.folder_operations import extract_infos_from_yaml, create_necessary_folders, ensure_training_structure
+import azure.cognitiveservices.vision.face.models as azure_face_models
+import click
+import requests
+import yaml
+from azure.cognitiveservices.vision.face import FaceClient
+from azure.cognitiveservices.vision.face.models import (OperationStatusType,
+                                                        Person,
+                                                        SnapshotObjectType,
+                                                        TrainingStatusType)
+from azure.cognitiveservices.vision.face.models._models_py3 import \
+    APIErrorException
+from msrest.authentication import CognitiveServicesCredentials
+from msrest.exceptions import ValidationError
+from PIL import ExifTags, Image, ImageDraw
+
+from lib.face_operations import (extract_faces_from_image, getRectangle,
+                                 resolve_face_ids)
+from lib.folder_operations import (create_necessary_folders,
+                                   ensure_training_structure,
+                                   extract_infos_from_yaml)
+from lib.image_operations import cleanup_images, resize_image
+from lib.person_group_operations import (add_images_to_person_group,
+                                         train_person_group)
+
 
 def classify_pictures(image_paths: List[str], face_client: FaceClient, person_group_id: str, output_path: str) -> None:
     for test_image in image_paths:
@@ -90,7 +99,10 @@ def prepare_environment() -> FaceClient:
     secrets_dict = extract_infos_from_yaml(yaml_path, "secrets")
     KEY = secrets_dict["face_api_key"]
     ENDPOINT = secrets_dict["face_api_endpoint"]
-    return FaceClient(ENDPOINT, CognitiveServicesCredentials(KEY))
+    try:
+        return FaceClient(ENDPOINT, CognitiveServicesCredentials(KEY))
+    except ValueError:
+        click.echo("You need to provide an endpoint and API key in the config.yaml.")
     
 
 def run_if_valid_credentials(func, *args):
