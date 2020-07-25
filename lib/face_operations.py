@@ -1,4 +1,9 @@
 import time
+import sys
+from azure.cognitiveservices.vision.face import FaceClient
+from typing import List, Tuple, Optional
+from azure.cognitiveservices.vision.face.models import Person
+from azure.cognitiveservices.vision.face.models._models_py3 import APIErrorException
 
 
 
@@ -56,6 +61,9 @@ def resolve_face_ids(face_client: FaceClient, face_ids: List[str], person_group_
     try:
         results = face_client.face.identify(face_ids, person_group_id)
         return results
+    except APIErrorException:
+        print(f"Error when resolving faces. This probably means that the person group you specified does not exist. Please check the spelling and case sensitivity.")
+        sys.exit()
     except Exception as e:
-        print(f"Error when resolving faces for {str(face_ids)}: {e}")
+        print(f"Error when resolving faces for Face IDs {str(face_ids)}: {e}")
         time.sleep(3)
