@@ -4,7 +4,7 @@ attrs==19.3.0
 azure-cognitiveservices-vision-computervision==0.6.0
 azure-cognitiveservices-vision-face==0.4.1
 azure-common==1.1.25
-certifi==2020.6.20
+certifi==2022.12.7
 chardet==3.0.4
 click==7.1.2
 cloudsync==1.5.1
